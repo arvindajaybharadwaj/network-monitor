@@ -7,6 +7,8 @@ SERVER_IP = '0.0.0.0'
 SERVER_PORT = config.SERVER_PORT
 BUFFER_SIZE = 1024
 
+events_log = []
+
 def parse_message(msg):
     """
     Expected format:
@@ -25,6 +27,21 @@ def parse_message(msg):
     token = parts[4]
 
     return node_id, event_type, value, timestamp, token
+
+def aggregate_events(events_log):
+    high_latency = 0
+    node_failures = 0
+
+    for _, event_type, value in events_log:
+        if event_type == "latency" and value > 150:
+            high_latency += 1
+        if event_type == "node_down" and value == 1:
+            node_failures += 1
+
+    if high_latency >= 3:
+        print("ALERT: Network-wide congestion detected!")
+    if node_failures >= 2:
+        print("ALERT: Multiple node failures detected!")
 
 def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -52,6 +69,10 @@ def main():
                 print("Invalid Signature! Packet dropped.")
                 continue
             # end security
+
+            if len(events_log) > 50:
+                events_log.pop(0)
+            aggregate_events(events_log)
 
             print("--------- NETWORK EVENT ---------")
             print(f"Node       : {node_id}")
