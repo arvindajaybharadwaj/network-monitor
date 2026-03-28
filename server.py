@@ -2,7 +2,7 @@ import socket
 import classifier
 import security
 
-SERVER_IP = '127.0.0.1'
+SERVER_IP = '0.0.0.0'
 SERVER_PORT = 9000
 BUFFER_SIZE = 1024
 
@@ -48,7 +48,7 @@ def main():
 
             # check security
             if not security.verify_signature(message, signature):
-                print("Malformed! Packet dropped.")
+                print("Invalid Signature! Packet dropped.")
                 continue
             # end security
 
