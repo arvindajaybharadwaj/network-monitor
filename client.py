@@ -2,9 +2,10 @@ import socket
 import time
 import events
 import security
+import config
 
-SERVER_IP = "172.20.10.3"
-SERVER_PORT = 9000
+SERVER_IP = config.SERVER_IP
+SERVER_PORT = config.SERVER_PORT
 
 
 def main(node_id):

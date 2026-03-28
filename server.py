@@ -1,9 +1,10 @@
 import socket
 import classifier
 import security
+import config
 
 SERVER_IP = '0.0.0.0'
-SERVER_PORT = 9000
+SERVER_PORT = config.SERVER_PORT
 BUFFER_SIZE = 1024
 
 def parse_message(msg):
