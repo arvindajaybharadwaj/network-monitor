@@ -8,11 +8,13 @@ SERVER_PORT = config.SERVER_PORT
 BUFFER_SIZE = 1024
 
 events_log = []
+node_status = {}
+event_count = 0
 
 def parse_message(msg):
     """
     Expected format:
-    node_id|event_type|value|timestamp|token
+    node_id|event_type|value|timestamp|signature
     """ 
 
     parts = msg.split("|")
@@ -43,7 +45,22 @@ def aggregate_events(events_log):
     if node_failures >= 2:
         print("ALERT: Multiple node failures detected!")
 
+def display_dashboard(node_status):
+    print("\n===== NETWORK DASHBOARD =====")
+
+    print(f"Active Nodes: {len(node_status)}\n")
+
+    print("Node   | Event        | Value | Class")
+    print("--------------------------------------")
+
+    for node, (event, value, cls) in node_status.items():
+        print(f"{node:6} | {event:12} | {value:5} | {cls}")
+
+    print("=============================\n")
+
 def main():
+    global event_count
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.bind((SERVER_IP, SERVER_PORT))
 
@@ -62,28 +79,32 @@ def main():
             node_id, event_type, value, timestamp, signature = parse_message(msg)
             message = f"{node_id}|{event_type}|{value}|{timestamp}"
 
-            classification = classifier.classify_event(event_type, value)
-
             # check security
             if not security.verify_signature(message, signature):
                 print("Invalid Signature! Packet dropped.")
                 continue
             # end security
 
+            classification = classifier.classify_event(event_type, value)
+
+            value_int = int(value)
+            events_log.append((node_id, event_type, value_int))
+
             if len(events_log) > 50:
                 events_log.pop(0)
+
+            node_status[node_id] = (event_type, value_int, classification)
+            
             aggregate_events(events_log)
 
-            print("--------- NETWORK EVENT ---------")
-            print(f"Node       : {node_id}")
-            print(f"Event Type : {event_type}")
-            print(f"Value      : {value}")
-            print(f"Timestamp  : {timestamp}")
-            print(f"Class      : {classification}")
-            print("---------------------------------")
+            print(f"{node_id} -> {event_type} ({value}) -> {classification}")
+
+            event_count += 1
+            if event_count % 5 == 0:
+                display_dashboard(node_status)
 
         except ValueError as e:
-            print("Eror: ", e)
+            print("Error: ", e)
         except Exception as e:
             print("Unexpected Error: ", e)
 
