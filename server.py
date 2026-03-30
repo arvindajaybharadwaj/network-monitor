@@ -2,6 +2,7 @@ import socket
 import classifier
 import security
 import config
+import time
 
 SERVER_IP = '0.0.0.0'
 SERVER_PORT = config.SERVER_PORT
@@ -10,6 +11,8 @@ BUFFER_SIZE = 1024
 events_log = []
 node_status = {}
 event_count = 0
+total_events = 0
+start_time = time.time()
 
 def parse_message(msg):
     """
@@ -59,7 +62,7 @@ def display_dashboard(node_status):
     print("=============================\n")
 
 def main():
-    global event_count
+    global event_count, total_events
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.bind((SERVER_IP, SERVER_PORT))
@@ -74,16 +77,26 @@ def main():
             data, addr = server_socket.recvfrom(BUFFER_SIZE)
             msg = data.decode()
 
+            receive_time = time.time()
+
             print(f"\nPacket received from {addr}")
 
             node_id, event_type, value, timestamp, signature = parse_message(msg)
             message = f"{node_id}|{event_type}|{value}|{timestamp}"
+
+            event_time = int(timestamp)
+            latency = receive_time - event_time
 
             # check security
             if not security.verify_signature(message, signature):
                 print("Invalid Signature! Packet dropped.")
                 continue
             # end security
+
+            total_events += 1
+
+            elapsed_time = time.time() - start_time
+            throughput = total_events / elapsed_time if elapsed_time > 0 else 0
 
             classification = classifier.classify_event(event_type, value)
 
@@ -97,7 +110,7 @@ def main():
             
             aggregate_events(events_log)
 
-            print(f"{node_id} -> {event_type} ({value}) -> {classification}")
+            print(f"{node_id} -> {event_type} ({value}) -> {classification} | Latency: {latency:.4f}s | Throughput: {throughput:.2f}/s")
 
             event_count += 1
             if event_count % 5 == 0:
